@@ -50,9 +50,9 @@ data <- read_csv("../data/airline_passenger_satisfaction.csv")
 head(data)
 ```
 
-## Clean data
+## Preview
 
-```{r clean-data}
+```{r preview}
 data %>%
   select(Satisfaction) %>%
   group_by(Satisfaction) %>%
