@@ -1,14 +1,25 @@
 ---
-title: "<CHANGE ME>"
+title: "Airline Passenger Satisfaction (Maven Analytics)"
 author: "Paul Williams"
 date: "`r Sys.Date()`"
 output: html_document
 ---
 
-# <CHANGE ME>
+# Airline Passenger Satisfaction
 
 - https://yihui.org/knitr/options/#chunk_options
 - https://kbroman.org/knitr_knutshell/pages/Rmarkdown.html
+
+## Intro
+
+The dataset and questions were sourced from Maven Analytics:  https://www.mavenanalytics.io/data-playground?page=2&pageSize=5
+
+- Which percentage of airline passengers are satisfied?
+- Does satisfaction vary by customer type?
+- Does satisfaction vary by type of travel?
+- What is the customer profile for a repeating airline passenger?
+- Does flight distance affect customer preferences or flight patterns?
+- Which factors contribute to customer satisfaction the most? What about dissatisfaction?
 
 ## Setup
 
@@ -29,43 +40,90 @@ install.packages("ggplot2")
 install.packages("svglite") # apt: libfontconfig1-dev
 ```
 
-## <CHANGE ME>
+## Load data
 
-```{r <CHANGE ME>}
+```{r load-data}
 library("readr")
 
-data <- read_csv("../data/CHANGE-ME.csv")
+data <- read_csv("../data/airline_passenger_satisfaction.csv")
 
-print(data)
+head(data)
 ```
 
-## <CHANGE ME>
+## Clean data
 
-```{r <CHANGE ME>}
+```{r clean-data}
+data %>%
+  select(Satisfaction) %>%
+  group_by(Satisfaction) %>%
+  summarise(
+    satisfaction_category = n()
+  ) %>%
+  print()
+```
+
+## Which percentage of airline passengers are satisfied?
+
+
+
+```{r general-satisfaction-preview, include=FALSE}
+
+total_survey_responses <- nrow(data)
+
+calc_satisfaction_percentage <- function(satisfaction_totals) {
+  one_response <- 100.0 / total_survey_responses
+  group_total <- one_response * satisfaction_totals
+  percentage <- round(group_total, 2)
+  return (percentage)
+}
+
+satisfaction_summary <- data %>%
+  select(Satisfaction) %>%
+  group_by(Satisfaction) %>%
+  summarise(satisfaction_totals = n()) %>%
+  mutate(percentage = calc_satisfaction_percentage(satisfaction_totals))
+
+print(satisfaction_summary)
+```
+
+```{r general-satisfaction-pie-chart}
+library('dplyr')
 library('ggplot2')
 library('svglite')
 
-ggplot(data) +
-  geom_col(aes(x=name, y=age)) +
-  theme_bw() +
-  theme(
-    legend.position="none",
-    panel.border = element_blank(),
-    panel.background = element_blank(),
-    panel.grid.major.x = element_blank(),
-    panel.grid.minor.x = element_blank(),
-    panel.grid.minor.y = element_blank(),
-    plot.title = element_text(hjust = 0.5),
-    plot.subtitle = element_text(hjust = 0.5),
-    plot.caption = element_text(hjust = 0.5),
-    axis.text.x = element_text(hjust = 0.5),
-    axis.ticks = element_blank(),
+pie_chart <- function(data, percent, name, title) {
+  y=enquo(percent)
+  fill=enquo(name)
+  
+  plot <- data %>%
+    ggplot(aes(x="", y=!!y, fill=!!fill)) +
+    geom_col(color="black") +
+    geom_text(
+      aes(label=paste(!!fill, "\n", !!y, "%")),
+      position=position_stack(vjust=0.5)
+    ) +
+    coord_polar(theta="y") +
+    theme_void() +
+    theme(
+      legend.position = "bottom",
+      legend.title = element_blank(),
+      plot.title = element_text(hjust = 0.5)
+    ) +
+    labs(title=title)
+  
+  return (plot)
+}
+
+satisfaction_summary %>%
+  pie_chart(
+    percent=percentage,
+    name=Satisfaction,
+    title="Majority of passengers are either neutral or disatisfied with their flight"
   ) +
-  labs(
-    title="Who are they and how old are they?",
-    x=element_blank(),
-    y="Age",
-  )
+  scale_fill_manual(values = c(
+    "#ef7c8e",
+    "#b6e2d3"
+  ))
 
 if (!dir.exists(file.path("..", "plots"))) {
   dir.create(file.path("..", "plots"))
